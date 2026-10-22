@@ -23,9 +23,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor, TabCompleter {
     private static final double POINT_SPACING = 2.5D;
     private static final int MAX_POINTS = 40;
+    private static final double ARRIVE_DISTANCE = 3.0D;
     private static final Component FAILED = Component.text("寻找失败", NamedTextColor.RED);
+    private static final Component STOPPED = Component.text("已停止追踪。", NamedTextColor.GRAY);
+    private static final Component ARRIVED = Component.text("已结束追踪。", NamedTextColor.GRAY);
 
-    private final Map<UUID, UUID> tracking = new ConcurrentHashMap<>();
+    private final Map<UUID, Target> tracking = new ConcurrentHashMap<>();
     private BukkitTask task;
 
     @Override
@@ -62,23 +65,27 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
             player.sendMessage(FAILED);
             return true;
         }
-        if (target.getUniqueId().equals(player.getUniqueId())) {
-            player.sendMessage(Component.text("不能追踪自己。", NamedTextColor.RED));
-            return true;
-        }
-        if (target.getUniqueId().equals(tracking.get(player.getUniqueId()))) {
+        boolean toRespawn = target.getUniqueId().equals(player.getUniqueId());
+        Target next = new Target(target.getUniqueId(), toRespawn);
+        if (next.equals(tracking.get(player.getUniqueId()))) {
             tracking.remove(player.getUniqueId());
-            player.sendMessage(Component.text("已停止追踪。", NamedTextColor.GRAY));
+            player.sendMessage(STOPPED);
             return true;
         }
-        if (!player.getWorld().equals(target.getWorld())) {
+        Location destination = destination(player, next);
+        if (destination == null) {
             tracking.remove(player.getUniqueId());
             player.sendMessage(FAILED);
             return true;
         }
-        tracking.put(player.getUniqueId(), target.getUniqueId());
-        player.sendMessage(Component.text("正在追踪 " + target.getName() + "。", NamedTextColor.GOLD));
-        drawLine(player, target);
+        if (player.getLocation().distance(destination) <= ARRIVE_DISTANCE) {
+            tracking.remove(player.getUniqueId());
+            player.sendMessage(ARRIVED);
+            return true;
+        }
+        tracking.put(player.getUniqueId(), next);
+        player.sendMessage(Component.text(toRespawn ? "正在追踪重生点。" : "正在追踪 " + target.getName() + "。", NamedTextColor.GOLD));
+        drawLine(player, destination);
         return true;
     }
 
@@ -91,38 +98,60 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
         return Bukkit.getOnlinePlayers().stream()
                 .map(Player::getName)
                 .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(prefix))
-                .filter(name -> !name.equals(sender.getName()))
                 .toList();
     }
 
     private void drawBeams() {
-        Iterator<Map.Entry<UUID, UUID>> entries = tracking.entrySet().iterator();
+        Iterator<Map.Entry<UUID, Target>> entries = tracking.entrySet().iterator();
         while (entries.hasNext()) {
-            Map.Entry<UUID, UUID> entry = entries.next();
+            Map.Entry<UUID, Target> entry = entries.next();
             Player player = Bukkit.getPlayer(entry.getKey());
-            Player target = Bukkit.getPlayer(entry.getValue());
             if (player == null || !player.isOnline()) {
                 entries.remove();
                 continue;
             }
-            if (target == null || !target.isOnline() || !player.getWorld().equals(target.getWorld())) {
+            Location destination = destination(player, entry.getValue());
+            if (destination == null) {
                 entries.remove();
                 player.sendMessage(FAILED);
                 continue;
             }
-            drawLine(player, target);
+            if (player.getLocation().distance(destination) <= ARRIVE_DISTANCE) {
+                entries.remove();
+                player.sendMessage(ARRIVED);
+                continue;
+            }
+            drawLine(player, destination);
         }
     }
 
-    private static void drawLine(Player from, Player to) {
+    private static Location destination(Player player, Target target) {
+        if (target.respawn()) {
+            Location respawn = player.getRespawnLocation();
+            if (respawn == null || respawn.getWorld() == null) {
+                respawn = player.getWorld().getSpawnLocation();
+            }
+            if (!player.getWorld().equals(respawn.getWorld())) {
+                return null;
+            }
+            return respawn;
+        }
+        Player other = Bukkit.getPlayer(target.playerId());
+        if (other == null || !other.isOnline() || !player.getWorld().equals(other.getWorld())) {
+            return null;
+        }
+        return other.getLocation();
+    }
+
+    private static void drawLine(Player from, Location end) {
         Location start = from.getLocation().add(0.0D, 1.0D, 0.0D);
-        Location end = to.getLocation().add(0.0D, 1.0D, 0.0D);
-        double dx = end.getX() - start.getX();
-        double dy = end.getY() - start.getY();
-        double dz = end.getZ() - start.getZ();
+        Location aim = end.clone().add(0.0D, 1.0D, 0.0D);
+        double dx = aim.getX() - start.getX();
+        double dy = aim.getY() - start.getY();
+        double dz = aim.getZ() - start.getZ();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (distance < 0.5D) {
-            from.getWorld().spawnParticle(Particle.PORTAL, end, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            from.getWorld().spawnParticle(Particle.PORTAL, aim, 1, 0.0D, 0.0D, 0.0D, 0.0D);
             return;
         }
         int points = Math.min(MAX_POINTS, Math.max(2, (int) Math.ceil(distance / POINT_SPACING)));
@@ -140,5 +169,8 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
                     0.0D
             );
         }
+    }
+
+    private record Target(UUID playerId, boolean respawn) {
     }
 }

@@ -6,5 +6,5 @@ description: Connect two players with a flame particle line
 author: adongshaln
 commands:
   zhuizong:
-    description: 用火焰粒子连向另一名玩家
+    description: 用传送门粒子连向玩家或自己的重生点
     usage: /zhuizong <玩家>
