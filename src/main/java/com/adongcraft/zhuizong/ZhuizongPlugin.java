@@ -21,8 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor, TabCompleter {
-    private static final double POINT_SPACING = 0.75D;
-    private static final int MAX_POINTS = 160;
+    private static final double POINT_SPACING = 2.5D;
+    private static final int MAX_POINTS = 40;
     private static final Component FAILED = Component.text("寻找失败", NamedTextColor.RED);
 
     private final Map<UUID, UUID> tracking = new ConcurrentHashMap<>();
@@ -35,7 +35,7 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
             command.setExecutor(this);
             command.setTabCompleter(this);
         }
-        task = Bukkit.getScheduler().runTaskTimer(this, this::drawBeams, 1L, 4L);
+        task = Bukkit.getScheduler().runTaskTimer(this, this::drawBeams, 10L, 20L);
         getLogger().info("追踪已启用");
     }
 
@@ -122,14 +122,14 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
         double dz = end.getZ() - start.getZ();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (distance < 0.5D) {
-            from.getWorld().spawnParticle(Particle.FLAME, end, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            from.getWorld().spawnParticle(Particle.PORTAL, end, 1, 0.0D, 0.0D, 0.0D, 0.0D);
             return;
         }
         int points = Math.min(MAX_POINTS, Math.max(2, (int) Math.ceil(distance / POINT_SPACING)));
         for (int index = 1; index <= points; index++) {
             double t = index / (double) points;
             from.getWorld().spawnParticle(
-                    Particle.FLAME,
+                    Particle.PORTAL,
                     start.getX() + dx * t,
                     start.getY() + dy * t,
                     start.getZ() + dz * t,
