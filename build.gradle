@@ -25,5 +25,5 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.jar {
-    archiveFileName = 'zhuizong-1.0.0.jar'
+    archiveFileName = 'mcpaper-zhuizong-1.0.0.jar'
 }

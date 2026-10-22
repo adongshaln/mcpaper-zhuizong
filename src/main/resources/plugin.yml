@@ -1,4 +1,4 @@
-name: Zhuizong
+name: mcpaper-zhuizong
 version: 1.0.0
 main: com.adongcraft.zhuizong.ZhuizongPlugin
 api-version: '26.3'
