@@ -156,15 +156,17 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
             spawnBurst(from, aim.getX(), aim.getY(), aim.getZ());
             return;
         }
-        int points = Math.min(MAX_POINTS, Math.max(2, (int) Math.ceil(distance / POINT_SPACING)));
+        double shown = Math.min(distance, MAX_POINTS * POINT_SPACING);
+        int points = Math.max(1, (int) Math.ceil(shown / POINT_SPACING));
         for (int index = 1; index <= points; index++) {
-            double t = index / (double) points;
+            double travelled = Math.min(distance, index * POINT_SPACING);
+            double t = travelled / distance;
             spawnBurst(from, start.getX() + dx * t, start.getY() + dy * t, start.getZ() + dz * t);
         }
     }
 
     private static void spawnBurst(Player viewer, double x, double y, double z) {
-        viewer.getWorld().spawnParticle(
+        viewer.spawnParticle(
                 Particle.PORTAL,
                 x,
                 y,
@@ -173,7 +175,9 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
                 PARTICLE_SPREAD,
                 PARTICLE_SPREAD,
                 PARTICLE_SPREAD,
-                0.0D
+                0.0D,
+                (Void) null,
+                true
         );
     }
 
