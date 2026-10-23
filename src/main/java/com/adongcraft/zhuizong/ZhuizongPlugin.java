@@ -23,6 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor, TabCompleter {
     private static final double POINT_SPACING = 2.5D;
     private static final int MAX_POINTS = 40;
+    private static final int PARTICLES_PER_POINT = 6;
+    private static final double PARTICLE_SPREAD = 0.22D;
     private static final double ARRIVE_DISTANCE = 3.0D;
     private static final Component FAILED = Component.text("寻找失败", NamedTextColor.RED);
     private static final Component STOPPED = Component.text("已停止追踪。", NamedTextColor.GRAY);
@@ -151,24 +153,28 @@ public final class ZhuizongPlugin extends JavaPlugin implements CommandExecutor,
         double dz = aim.getZ() - start.getZ();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (distance < 0.5D) {
-            from.getWorld().spawnParticle(Particle.PORTAL, aim, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            spawnBurst(from, aim.getX(), aim.getY(), aim.getZ());
             return;
         }
         int points = Math.min(MAX_POINTS, Math.max(2, (int) Math.ceil(distance / POINT_SPACING)));
         for (int index = 1; index <= points; index++) {
             double t = index / (double) points;
-            from.getWorld().spawnParticle(
-                    Particle.PORTAL,
-                    start.getX() + dx * t,
-                    start.getY() + dy * t,
-                    start.getZ() + dz * t,
-                    1,
-                    0.0D,
-                    0.0D,
-                    0.0D,
-                    0.0D
-            );
+            spawnBurst(from, start.getX() + dx * t, start.getY() + dy * t, start.getZ() + dz * t);
         }
+    }
+
+    private static void spawnBurst(Player viewer, double x, double y, double z) {
+        viewer.getWorld().spawnParticle(
+                Particle.PORTAL,
+                x,
+                y,
+                z,
+                PARTICLES_PER_POINT,
+                PARTICLE_SPREAD,
+                PARTICLE_SPREAD,
+                PARTICLE_SPREAD,
+                0.0D
+        );
     }
 
     private record Target(UUID playerId, boolean respawn) {
