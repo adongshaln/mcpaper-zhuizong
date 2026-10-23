@@ -1,7 +1,7 @@
 order: 10
 announcements:
   - id: trail
-    title: 追踪
+    title: 寻路
     pages:
       - |-
         输入 /zhuizong 玩家名，
